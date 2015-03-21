@@ -1,0 +1,10 @@
+[package]
+
+name = "retag"
+version = "0.0.1"
+authors = ["Michael Maurizi <michael.maurizi@gmail.com>"]
+
+[dependencies]
+glob = "0.2"
+notify = "1.2"
+tempdir = "0.2.0"
