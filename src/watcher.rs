@@ -25,13 +25,8 @@ macro_rules! pattern(($r:expr) => ({
 }));
 
 pub fn watch_project(project_dir: &Path, tag_file: &Path) {
-    let project_dir_str = project_dir.to_str().unwrap_or_else(|| {
-        panic!("Could not determine current directory");
-    });
-
-    let tag_file_str = tag_file.to_str().unwrap_or_else(|| {
-        panic!("Could not load tag file path");
-    });
+    let project_dir_str = project_dir.to_str().expect("Could not determine current directory");
+    let tag_file_str = tag_file.to_str().expect("Could not load tag file path");
 
     let mut ctags = Command::new("ctags");
     let mut cmd = ctags
@@ -52,10 +47,7 @@ pub fn watch_project(project_dir: &Path, tag_file: &Path) {
     let w: Result<RecommendedWatcher, NotifyError> = Watcher::new(file_change_tx);
     match w {
         Ok(mut watcher) => {
-            match watcher.watch(&project_dir) {
-                Ok(_) => (),
-                Err(_) => panic!("Could not start file watcher")
-            };
+            watcher.watch(&project_dir).ok().expect("Could not start file watcher");
 
             while let Ok(e) = file_change_rx.recv() {
                 if let Some(path) = e.path {
@@ -91,18 +83,13 @@ pub fn watch_project(project_dir: &Path, tag_file: &Path) {
 }
 
 fn ignored(f: &Path, tag_file: &Path) -> bool {
-    let ignored = vec![
+    let ignored = [
         pattern!(r"**/.git/**"),
         pattern!(r"**/.hg/**"),
         pattern!(r"**/.svn/**"),
     ];
-    for pattern in ignored.iter() {
-        if pattern.matches_path(f) {
-            return true;
-        }
-    }
-    // Always ignore changes to the tag file
-    f == tag_file
+    // Ignore version control files, and always ignore changes to the tag file
+    f == tag_file || ignored.iter().any(|p| p.matches_path(f))
 }
 
 fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path) -> Result<(), Error> {
@@ -157,7 +144,7 @@ fn filter_tagfile_into_temp(tmp_dir: &TempDir, path_strs: &HashSet<&str>, tag_pa
     for line in cur_tag_file.lines() {
         if let Ok(line) = line {
             if path_strs.iter().all(|&p| !line.contains(p)) {
-                try!(tmp_tag_file.write_fmt(format_args!("{}\n", line)));
+                try!(writeln!(&mut tmp_tag_file, "{}", line));
             }
         }
     }
