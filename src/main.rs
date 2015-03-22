@@ -34,15 +34,25 @@ macro_rules! pattern(($r:expr) => ({
 }));
 
 fn main() {
-    let current_dir = &env::current_dir().unwrap();
+    let current_dir = match env::current_dir() {
+        Ok(path) => path,
+        Err(e) => panic!("Could not determine current directory: {}", e.description())
+    };
+    let current_dir_str = current_dir.to_str().unwrap_or_else(|| {
+        panic!("Could not determine current directory");
+    });
+
     // TODO: Get tag file location from cmd line parameter
     let tag_file = current_dir.join(".git").join("tags");
+    let tag_file_str = tag_file.to_str().unwrap_or_else(|| {
+        panic!("Could not load tag file path");
+    });
 
     let mut ctags = Command::new("ctags");
     let mut cmd = ctags
-        .arg("-f").arg(tag_file.to_str().unwrap())
+        .arg("-f").arg(tag_file_str)
         .arg("--recurse")
-        .arg(current_dir.to_str().unwrap());
+        .arg(current_dir_str);
 
     println!("Running {:?}", cmd);
     let status = cmd.status().unwrap_or_else(|e| {
@@ -57,9 +67,9 @@ fn main() {
     let w: Result<RecommendedWatcher, NotifyError> = Watcher::new(file_change_tx);
     match w {
         Ok(mut watcher) => {
-            match watcher.watch(current_dir) {
+            match watcher.watch(&current_dir) {
                 Ok(_) => (),
-                Err(_) => ctags_fail!("Could not start file watcher")
+                Err(_) => panic!("Could not start file watcher")
             };
 
             while let Ok(e) = file_change_rx.recv() {
@@ -91,7 +101,7 @@ fn main() {
                 }
             }
         },
-        Err(_) => ctags_fail!("Could not start file watcher")
+        Err(_) => panic!("Could not start file watcher")
     }
 }
 
@@ -116,10 +126,16 @@ fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path) -> Result<
     let path_strs = paths_to_strs(changed_files);
 
     let tmp_tag = try!(filter_tagfile_into_temp(&tmp_dir, &path_strs, tag_path));
+    let tmp_tag_str = match tmp_tag.to_str() {
+        Some(filename) => filename,
+        None => {
+            return Err(Error::new(ErrorKind::Other, "Could not open temporary file", None));
+        }
+    };
 
     let mut ctags = Command::new("ctags");
     let mut cmd = ctags
-        .arg("-f").arg(tmp_tag.to_str().unwrap())
+        .arg("-f").arg(tmp_tag_str)
         .arg("--append");
 
     for path in path_strs.iter() {
