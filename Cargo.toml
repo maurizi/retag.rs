@@ -8,3 +8,6 @@ authors = ["Michael Maurizi <michael.maurizi@gmail.com>"]
 glob = "0.2"
 notify = "1.2"
 tempdir = "0.2.0"
+docopt = "*"
+docopt_macros = "*"
+rustc-serialize = "*"
