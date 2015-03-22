@@ -146,10 +146,7 @@ fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path) -> Result<
     let status = try!(cmd.status());
 
     if ! status.success() {
-        let detail = match status.code() {
-            Some(code) => Some(format!("Ctags exited with error code: {}", code)),
-            None => None
-        };
+        let detail = status.code().map(|code| format!("Ctags exited with error code: {}", code));
         return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code", detail));
     }
 
