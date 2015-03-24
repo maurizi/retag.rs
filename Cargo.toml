@@ -7,7 +7,7 @@ authors = ["Michael Maurizi <michael.maurizi@gmail.com>"]
 [dependencies]
 glob = "0.2"
 notify = "1.2"
-tempdir = "0.2.0"
+tempdir = "0.3.2"
 docopt = "*"
 docopt_macros = "*"
 rustc-serialize = "*"
