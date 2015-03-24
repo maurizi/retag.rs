@@ -22,6 +22,8 @@ TAGFILE is, by default 'tags'
 
 Options:
   -h, --help        Show this message.
+  --tag-cmd=<cmd>   The tag program to use [default: ctags].
+                    Pass 'etags' to generate an Emacs compatible tag file
 ");
 
 fn main() {
@@ -43,5 +45,5 @@ fn main() {
         PathBuf::new(tag)
     };
 
-    watcher::watch_project(&current_dir, &tag_file);
+    watcher::watch_project(&current_dir, &tag_file, &args.flag_tag_cmd);
 }

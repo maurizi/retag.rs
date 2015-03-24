@@ -24,11 +24,11 @@ macro_rules! pattern(($r:expr) => ({
     }
 }));
 
-pub fn watch_project(project_dir: &Path, tag_file: &Path) {
+pub fn watch_project(project_dir: &Path, tag_file: &Path, tag_cmd: &str) {
     let project_dir_str = project_dir.to_str().expect("Could not determine current directory");
     let tag_file_str = tag_file.to_str().expect("Could not load tag file path");
 
-    let mut ctags = Command::new("ctags");
+    let mut ctags = Command::new(tag_cmd);
     let mut cmd = ctags
         .arg("-f").arg(tag_file_str)
         .arg("--recurse")
@@ -70,7 +70,7 @@ pub fn watch_project(project_dir: &Path, tag_file: &Path) {
                             }
                         }
 
-                        match regenerate_tags(&changed_files, &tag_file) {
+                        match regenerate_tags(&changed_files, &tag_file, tag_cmd) {
                             Ok(_) => println!("Rebuilt tag file for: {:?}", changed_files),
                             Err(e) => println!("Failed to rebuild tags, error {}", e.description())
                         }
@@ -92,12 +92,12 @@ fn ignored(f: &Path, tag_file: &Path) -> bool {
     f == tag_file || ignored.iter().any(|p| p.matches_path(f))
 }
 
-fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path) -> Result<(), Error> {
+fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path, tag_cmd: &str) -> Result<(), Error> {
     let tmp_dir = try!(TempDir::new("retag"));
 
     let path_strs = paths_to_strs(changed_files);
 
-    let tmp_tag = try!(filter_tagfile_into_temp(&tmp_dir, &path_strs, tag_path));
+    let tmp_tag = &try!(filter_tagfile_into_temp(&tmp_dir, &path_strs, tag_path));
     let tmp_tag_str = match tmp_tag.to_str() {
         Some(filename) => filename,
         None => {
@@ -105,7 +105,7 @@ fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path) -> Result<
         }
     };
 
-    let mut ctags = Command::new("ctags");
+    let mut ctags = Command::new(tag_cmd);
     let mut cmd = ctags
         .arg("-f").arg(tmp_tag_str)
         .arg("--append");
@@ -122,7 +122,7 @@ fn regenerate_tags(changed_files: &HashSet<PathBuf>, tag_path: &Path) -> Result<
         return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code", detail));
     }
 
-    try!(fs::rename(&tmp_tag, tag_path));
+    try!(fs::rename(tmp_tag, tag_path));
 
     Ok(())
 }
