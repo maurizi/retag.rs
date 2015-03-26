@@ -3,6 +3,6 @@ A tool that watches a directory and rebuilds your Exuberant Ctags when files cha
 
 Inspired by [vim-gutentags](https://github.com/ludovicchabant/vim-gutentags), this plugin watches for file changes in a directory and incrementally rebuilds your tag file for the files which have changed.
 
-Built using rust nightly 2015-03-24.
+Built using rust nightly 2015-03-26.
 
 To use this tool, Exuberant Ctags must be installed and on your PATH.
