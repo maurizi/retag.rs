@@ -10,7 +10,7 @@ use std::io::{BufReader, BufRead, BufWriter, Write, Error, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::channel;
-use std::old_io::timer;
+use std::thread;
 use std::time::duration::Duration;
 
 macro_rules! ctags_fail {
@@ -57,7 +57,7 @@ pub fn watch_project(project_dir: &Path, tag_file: &Path, tag_cmd: &str) {
                         // file changes, e.g. whena git operation happens
                         //
                         // TODO: Vary the sleep time based on how long the initial tag generation is
-                        timer::sleep(Duration::seconds(1));
+                        thread::sleep(Duration::seconds(1));
 
                         let mut changed_files = HashSet::new();
                         changed_files.insert(path);
@@ -72,7 +72,7 @@ pub fn watch_project(project_dir: &Path, tag_file: &Path, tag_cmd: &str) {
 
                         match regenerate_tags(&changed_files, &tag_file, tag_cmd) {
                             Ok(_) => println!("Rebuilt tag file for: {:?}", changed_files),
-                            Err(e) => println!("Failed to rebuild tags, error {}", e.description())
+                            Err(e) => println!("Failed to rebuild tags, error {}", e)
                         }
                     }
                 }

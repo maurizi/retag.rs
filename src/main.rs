@@ -1,4 +1,4 @@
-#![feature(old_io, io, std_misc, collections, path_ext, convert)]
+#![feature(io, std_misc, collections, path_ext, convert, thread_sleep)]
 
 extern crate docopt;
 extern crate glob;
@@ -46,7 +46,7 @@ fn main() {
 
     let current_dir = match env::current_dir() {
         Ok(path) => path,
-        Err(e) => panic!("Could not determine current directory: {}", e.description())
+        Err(e) => panic!("Could not determine current directory: {}", e)
     };
 
     let tag = &args.arg_TAGFILE;
