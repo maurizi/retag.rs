@@ -1,15 +1,11 @@
-#![feature(old_io)]
-#![feature(io)]
-#![feature(std_misc)]
-#![feature(collections)]
-#![feature(path_ext)]
+#![feature(old_io, io, std_misc, collections, path_ext, convert)]
 
 extern crate docopt;
 extern crate glob;
 extern crate notify;
 extern crate tempdir;
 extern crate toml;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 
 use docopt::Docopt;
 
@@ -57,7 +53,7 @@ fn main() {
     let tag_file = if Path::new(tag).is_relative() {
         current_dir.join(tag)
     } else {
-        PathBuf::new(tag)
+        PathBuf::from(tag)
     };
 
     watcher::watch_project(&current_dir, &tag_file, &args.flag_tag_cmd);
