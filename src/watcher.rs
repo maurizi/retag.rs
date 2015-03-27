@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufRead, BufWriter, Write, Error, ErrorKind};
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, AsPath};
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
@@ -26,13 +26,20 @@ macro_rules! pattern(($r:expr) => ({
 
 pub struct TagWatcher<'a> {
     project_dir: &'a Path,
-    tag_path: &'a Path,
-    tag_cmd: &'a str,
+    tag_path: PathBuf,
+    tag_cmd: String,
 }
 
 impl <'a>TagWatcher<'a> {
+    pub fn new(project_dir: &'a Path, tag: &str, tag_cmd: &'a str) -> TagWatcher<'a> {
+        // Using an absolute path to the tagfile will make Ctags use absolute paths for file
+        // references, which makes it easier to filter out files later.
+        let tag_path = if Path::new(tag).is_relative() {
+            project_dir.join(tag)
+        } else {
+            PathBuf::from(tag)
+        };
 
-    pub fn new(project_dir: &'a Path, tag_path: &'a Path, tag_cmd: &'a str) -> TagWatcher<'a> {
         TagWatcher {
             project_dir: project_dir,
             tag_path: tag_path,
@@ -108,7 +115,7 @@ impl <'a>TagWatcher<'a> {
             pattern!(r"**/.svn/**"),
         ];
         // Ignore version control files, and always ignore changes to the tag file
-        f == self.tag_path || ignored.iter().any(|p| p.matches_path(f))
+        f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
     }
 
     fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), Error> {
@@ -141,7 +148,7 @@ impl <'a>TagWatcher<'a> {
             return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code", detail));
         }
 
-        try!(fs::rename(tmp_tag, self.tag_path));
+        try!(fs::rename(tmp_tag, &self.tag_path));
 
         Ok(())
     }

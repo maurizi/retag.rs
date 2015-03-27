@@ -13,7 +13,6 @@ mod config;
 use docopt::Docopt;
 
 use std::env;
-use std::path::{PathBuf, Path};
 
 use watcher::TagWatcher;
 
@@ -51,12 +50,5 @@ fn main() {
         Err(e) => panic!("Could not determine current directory: {}", e)
     };
 
-    let tag = &args.arg_TAGFILE;
-    let tag_file = if Path::new(tag).is_relative() {
-        current_dir.join(tag)
-    } else {
-        PathBuf::from(tag)
-    };
-
-    TagWatcher::new(&current_dir, &tag_file, &args.flag_tag_cmd).watch_project();
+    TagWatcher::new(&current_dir, &args.arg_TAGFILE, &args.flag_tag_cmd).watch_project();
 }
