@@ -27,11 +27,14 @@ macro_rules! pattern(($r:expr) => ({
 pub struct TagWatcher<'a> {
     project_dir: &'a Path,
     tag_path: PathBuf,
-    tag_cmd: String,
+    tag_cmd: &'a str,
+    tmp_dir: TempDir
 }
 
 impl <'a>TagWatcher<'a> {
     pub fn new(project_dir: &'a Path, tag: &str, tag_cmd: &'a str) -> TagWatcher<'a> {
+        let tmp_dir = TempDir::new("retag").ok().expect("Could not create temp directory");
+
         // Using an absolute path to the tagfile will make Ctags use absolute paths for file
         // references, which makes it easier to filter out files later.
         let tag_path = if Path::new(tag).is_relative() {
@@ -43,7 +46,8 @@ impl <'a>TagWatcher<'a> {
         TagWatcher {
             project_dir: project_dir,
             tag_path: tag_path,
-            tag_cmd: tag_cmd
+            tag_cmd: tag_cmd,
+            tmp_dir: tmp_dir
         }
     }
 
@@ -119,11 +123,9 @@ impl <'a>TagWatcher<'a> {
     }
 
     fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), Error> {
-        let tmp_dir = try!(TempDir::new("retag"));
-
         let path_strs = paths_to_strs(changed_files);
 
-        let tmp_tag = &try!(self.filter_tagfile_into_temp(&tmp_dir, &path_strs));
+        let tmp_tag = &try!(self.filter_tagfile_into_temp(&path_strs));
         let tmp_tag_str = match tmp_tag.to_str() {
             Some(filename) => filename,
             None => {
@@ -153,13 +155,13 @@ impl <'a>TagWatcher<'a> {
         Ok(())
     }
 
-    fn filter_tagfile_into_temp(&self, tmp_dir: &TempDir, path_strs: &HashSet<&str>) -> Result<PathBuf, Error> {
+    fn filter_tagfile_into_temp(&self, path_strs: &HashSet<&str>) -> Result<PathBuf, Error> {
         // First, filter the tag file into a temp file excluding the changed files
         // This is done to prevent duplicate tags, as ctags does not remove tags
         // from your existing tag file when you use '--append'
         //
         // We use a temp file to avoid interfering with usage from the existing tag file
-        let tmp_tag = tmp_dir.path().join("tags.temp");
+        let tmp_tag = self.tmp_dir.path().join("tags.temp");
 
         let cur_tag_file = BufReader::new(try!(File::open(&self.tag_path)));
         let mut tmp_tag_file = BufWriter::new(try!(File::create(&tmp_tag)));
