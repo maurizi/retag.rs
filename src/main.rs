@@ -7,13 +7,15 @@ extern crate tempdir;
 extern crate toml;
 extern crate rustc_serialize;
 
+mod watcher;
+mod config;
+
 use docopt::Docopt;
 
 use std::env;
 use std::path::{PathBuf, Path};
 
-mod watcher;
-mod config;
+use watcher::TagWatcher;
 
 static USAGE: &'static str = "
 Usage: retags [options] [TAGFILE]
@@ -56,5 +58,5 @@ fn main() {
         PathBuf::from(tag)
     };
 
-    watcher::watch_project(&current_dir, &tag_file, &args.flag_tag_cmd);
+    TagWatcher::new(&current_dir, &tag_file, &args.flag_tag_cmd).watch_project();
 }
