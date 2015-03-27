@@ -52,32 +52,14 @@ impl <'a>TagWatcher<'a> {
     }
 
     pub fn watch_project(self) {
-        let project_dir_str = self.project_dir.to_str()
-            .expect("Could not determine current directory");
-
-        let tag_file_str = self.tag_path.to_str()
-            .expect("Could not load tag file path");
-
-        let mut ctags = Command::new(self.tag_cmd);
-        let mut cmd = ctags
-            .arg("-f").arg(tag_file_str)
-            .arg("--recurse")
-            .arg(project_dir_str);
-
-        println!("Running {:?}", cmd);
-        let status = cmd.status().unwrap_or_else(|e| {
-            ctags_fail!(e);
-        });
-
-        if ! status.success() {
-            ctags_fail!(status);
-        }
-
         let (file_change_tx, file_change_rx) = channel();
         let w: Result<RecommendedWatcher, NotifyError> = Watcher::new(file_change_tx);
+
         match w {
             Ok(mut watcher) => {
                 watcher.watch(&self.project_dir).ok().expect("Could not start file watcher");
+
+                self.generate_initial_tag().ok().expect("Could not build tag file");
 
                 while let Ok(e) = file_change_rx.recv() {
                     if let Some(path) = e.path {
@@ -122,6 +104,28 @@ impl <'a>TagWatcher<'a> {
         f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
     }
 
+    fn generate_initial_tag(&self) -> Result<(), Error> {
+        let tmp_tag = self.get_tmp_tag();
+
+        // TODO: check if tag exists first
+        try!(fs::copy(&self.tag_path, &tmp_tag));
+
+        let project_dir_str = self.project_dir.to_str()
+            .expect("Could not determine current directory");
+
+        let tmp_tag_str = tmp_tag.to_str().expect("Could not load tag file path");
+
+        let mut ctags = Command::new(self.tag_cmd);
+        let mut cmd = ctags
+            .arg("-f").arg(tmp_tag_str)
+            .arg("--recurse")
+            .arg(project_dir_str);
+
+        try!(self.run_ctags(&mut cmd, &tmp_tag));
+
+        Ok(())
+    }
+
     fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), Error> {
         let path_strs = paths_to_strs(changed_files);
 
@@ -142,15 +146,7 @@ impl <'a>TagWatcher<'a> {
             cmd.arg(path);
         }
 
-        println!("Running {:?}", cmd);
-        let status = try!(cmd.status());
-
-        if ! status.success() {
-            let detail = status.code().map(|code| format!("Ctags exited with error code: {}", code));
-            return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code", detail));
-        }
-
-        try!(fs::rename(tmp_tag, &self.tag_path));
+        try!(self.run_ctags(&mut cmd, &tmp_tag));
 
         Ok(())
     }
@@ -159,9 +155,7 @@ impl <'a>TagWatcher<'a> {
         // First, filter the tag file into a temp file excluding the changed files
         // This is done to prevent duplicate tags, as ctags does not remove tags
         // from your existing tag file when you use '--append'
-        //
-        // We use a temp file to avoid interfering with usage from the existing tag file
-        let tmp_tag = self.tmp_dir.path().join("tags.temp");
+        let tmp_tag = self.get_tmp_tag();
 
         let cur_tag_file = BufReader::new(try!(File::open(&self.tag_path)));
         let mut tmp_tag_file = BufWriter::new(try!(File::create(&tmp_tag)));
@@ -178,6 +172,27 @@ impl <'a>TagWatcher<'a> {
         }
 
         Ok(tmp_tag)
+    }
+
+    fn get_tmp_tag(&self) -> PathBuf {
+        // We use a temp file to avoid interfering with usage from the existing tag file
+        self.tmp_dir.path().join("tags.temp")
+    }
+
+    fn run_ctags(&self, cmd: &mut Command, tmp_tag: &Path) -> Result<(), Error> {
+        println!("Running {:?}", cmd);
+
+        let status = try!(cmd.status());
+
+        if ! status.success() {
+            let detail = status.code().map(|code| format!("Ctags exited with error code: {}", code));
+
+            return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code", detail));
+        }
+
+        try!(fs::rename(tmp_tag, &self.tag_path));
+
+        Ok(())
     }
 }
 
