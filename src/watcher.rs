@@ -5,17 +5,13 @@ use tempdir::TempDir;
 
 use std::collections::HashSet;
 use std::fs;
-use std::fs::File;
+use std::fs::{File, PathExt};
 use std::io::{BufReader, BufRead, BufWriter, Write, Error, ErrorKind};
 use std::path::{Path, PathBuf, AsPath};
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::time::duration::Duration;
-
-macro_rules! ctags_fail {
-    ($cause:expr) => (panic!("Failed to start ctags: {}", $cause));
-}
 
 macro_rules! pattern(($r:expr) => ({
     match Pattern::new($r) {
@@ -31,7 +27,7 @@ pub struct TagWatcher<'a> {
     tmp_dir: TempDir
 }
 
-impl <'a>TagWatcher<'a> {
+impl <'a> TagWatcher<'a> {
     pub fn new(project_dir: &'a Path, tag: &str, tag_cmd: &'a str) -> TagWatcher<'a> {
         let tmp_dir = TempDir::new("retag").ok().expect("Could not create temp directory");
 
@@ -59,7 +55,7 @@ impl <'a>TagWatcher<'a> {
             Ok(mut watcher) => {
                 watcher.watch(&self.project_dir).ok().expect("Could not start file watcher");
 
-                self.generate_initial_tag().ok().expect("Could not build tag file");
+                self.generate_initial_tagfile().ok().expect("Could not build tag file");
 
                 while let Ok(e) = file_change_rx.recv() {
                     if let Some(path) = e.path {
@@ -104,11 +100,16 @@ impl <'a>TagWatcher<'a> {
         f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
     }
 
-    fn generate_initial_tag(&self) -> Result<(), Error> {
-        let tmp_tag = self.get_tmp_tag();
+    fn generate_initial_tagfile(&self) -> Result<(), Error> {
+        if self.tag_path.exists() {
+            self.update_tags_for_updated_files()
+        } else {
+            self.create_tagfile()
+        }
+    }
 
-        // TODO: check if tag exists first
-        try!(fs::copy(&self.tag_path, &tmp_tag));
+    fn create_tagfile(&self) -> Result<(), Error> {
+        let tmp_tag = self.get_tmp_tag();
 
         let project_dir_str = self.project_dir.to_str()
             .expect("Could not determine current directory");
@@ -126,6 +127,35 @@ impl <'a>TagWatcher<'a> {
         Ok(())
     }
 
+    fn update_tags_for_updated_files(&self) -> Result<(), Error> {
+        let tag_modified_at = try!(get_path_modification_time(&self.tag_path));
+
+        // Rely on file modification times to tell us which files have been updated since the tag
+        // file was last updated.
+        let mut changed_files = HashSet::new();
+
+        let entries = try!(fs::walk_dir(&self.project_dir));
+        for entry in entries {
+            if let Ok(file) = entry {
+                let path = file.path();
+
+                if path.is_file() && !self.ignored(&path) {
+                    if let Ok(path_modified_at) = get_path_modification_time(&path) {
+                        if path_modified_at > tag_modified_at {
+                            changed_files.insert(path);
+                        }
+                    };
+                }
+            }
+        }
+
+        if ! changed_files.is_empty() {
+            self.regenerate_tags(&changed_files)
+        } else {
+            Ok(())
+        }
+    }
+
     fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), Error> {
         let path_strs = paths_to_strs(changed_files);
 
@@ -138,12 +168,10 @@ impl <'a>TagWatcher<'a> {
         };
 
         let mut ctags = Command::new(self.tag_cmd);
-        let mut cmd = ctags
-            .arg("-f").arg(tmp_tag_str)
-            .arg("--append");
+        let mut cmd = ctags.arg("-f").arg(tmp_tag_str);
 
         for path in path_strs.iter() {
-            cmd.arg(path);
+            cmd.arg("--append").arg(path);
         }
 
         try!(self.run_ctags(&mut cmd, &tmp_tag));
@@ -205,4 +233,12 @@ fn paths_to_strs(paths: &HashSet<PathBuf>) -> HashSet<&str> {
     }
 
     path_strs
+}
+
+fn get_path_modification_time(path: &Path) -> Result<u64, Error> {
+    let file = try!(File::open(path));
+
+    let metadata = try!(file.metadata());
+
+    Ok(metadata.modified())
 }

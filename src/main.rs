@@ -1,4 +1,4 @@
-#![feature(io, std_misc, collections, path_ext, convert, thread_sleep)]
+#![feature(io, std_misc, collections, path_ext, convert, thread_sleep, fs_walk, fs_time)]
 
 extern crate docopt;
 extern crate glob;
