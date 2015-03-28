@@ -1,4 +1,4 @@
-#![feature(io, std_misc, collections, path_ext, convert, thread_sleep)]
+#![feature(io, std_misc, collections, path_ext, convert, thread_sleep, fs_walk, fs_time)]
 
 extern crate docopt;
 extern crate glob;
@@ -7,13 +7,14 @@ extern crate tempdir;
 extern crate toml;
 extern crate rustc_serialize;
 
+mod watcher;
+mod config;
+
 use docopt::Docopt;
 
 use std::env;
-use std::path::{PathBuf, Path};
 
-mod watcher;
-mod config;
+use watcher::TagWatcher;
 
 static USAGE: &'static str = "
 Usage: retags [options] [TAGFILE]
@@ -49,12 +50,5 @@ fn main() {
         Err(e) => panic!("Could not determine current directory: {}", e)
     };
 
-    let tag = &args.arg_TAGFILE;
-    let tag_file = if Path::new(tag).is_relative() {
-        current_dir.join(tag)
-    } else {
-        PathBuf::from(tag)
-    };
-
-    watcher::watch_project(&current_dir, &tag_file, &args.flag_tag_cmd);
+    TagWatcher::new(&current_dir, &args.arg_TAGFILE, &args.flag_tag_cmd).watch_project();
 }
