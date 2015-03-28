@@ -96,8 +96,8 @@ impl <'a> TagWatcher<'a> {
             pattern!(r"**/.hg/**"),
             pattern!(r"**/.svn/**"),
         ];
-        // Ignore version control files, and always ignore changes to the tag file
-        f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
+        // Ignore directories, version control files, and always ignore changes to the tag file
+        f.is_dir() || f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
     }
 
     fn generate_initial_tagfile(&self) -> Result<(), Error> {
