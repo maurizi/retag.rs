@@ -13,4 +13,4 @@ For installation instructions on ZSH plugins, please see https://github.com/unix
 
 PRs adding support for other shells are highly welcome!
 
-Built using rust nightly 2015-03-26.
+Built using rust nightly `2015-03-29`.  If you have trouble compiling I suggest you switch to that version using the `--date` flag of `rustup.sh`.
