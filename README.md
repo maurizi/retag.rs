@@ -9,6 +9,8 @@ To have `retag` automatically watch your Git projects when you CD into them, you
 If you have `rustc` and `cargo` installed, `retag` will be compiled when first used.
 For installation instructions on ZSH plugins, please see https://github.com/unixorn/awesome-zsh-plugins#installation.
 
+(The ZSH functionality currently requires `start-stop-daemon` for creating PIDfiles and daemonization.  I'm planning to add support for that directly in the Rust eventually, to remove the need for `start-stop-daemon`)
+
 PRs adding support for other shells are highly welcome!
 
 Built using rust nightly 2015-03-26.
