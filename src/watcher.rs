@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf, AsPath};
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
-use std::time::duration::Duration;
 
 macro_rules! pattern(($r:expr) => ({
     match Pattern::new($r) {
@@ -65,7 +64,7 @@ impl <'a> TagWatcher<'a> {
                             // file changes, e.g. whena git operation happens
                             //
                             // TODO: Vary the sleep time based on how long the initial tag generation is
-                            thread::sleep(Duration::seconds(1));
+                            thread::sleep_ms(500);
 
                             let mut changed_files = HashSet::new();
                             changed_files.insert(path);
@@ -163,7 +162,7 @@ impl <'a> TagWatcher<'a> {
         let tmp_tag_str = match tmp_tag.to_str() {
             Some(filename) => filename,
             None => {
-                return Err(Error::new(ErrorKind::Other, "Could not open temporary file", None));
+                return Err(Error::new(ErrorKind::Other, "Could not open temporary file"));
             }
         };
 
@@ -213,9 +212,7 @@ impl <'a> TagWatcher<'a> {
         let status = try!(cmd.status());
 
         if ! status.success() {
-            let detail = status.code().map(|code| format!("Ctags exited with error code: {}", code));
-
-            return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code", detail));
+            return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code"));
         }
 
         try!(fs::rename(tmp_tag, &self.tag_path));
