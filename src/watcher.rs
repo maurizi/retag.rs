@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::fs::{File, PathExt};
 use std::io::{BufReader, BufRead, BufWriter, Write, Error, ErrorKind};
-use std::path::{Path, PathBuf, AsPath};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
