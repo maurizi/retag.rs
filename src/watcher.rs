@@ -54,7 +54,7 @@ impl <'a> TagWatcher<'a> {
             Ok(mut watcher) => {
                 watcher.watch(&self.project_dir).ok().expect("Could not start file watcher");
 
-                self.generate_initial_tagfile().ok().expect("Could not build tag file");
+                self.create_tagfile().ok().expect("Could not build tag file");
 
                 while let Ok(e) = file_change_rx.recv() {
                     if let Some(path) = e.path {
@@ -99,14 +99,6 @@ impl <'a> TagWatcher<'a> {
         f.is_dir() || f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
     }
 
-    fn generate_initial_tagfile(&self) -> Result<(), Error> {
-        if self.tag_path.exists() {
-            self.update_tags_for_updated_files()
-        } else {
-            self.create_tagfile()
-        }
-    }
-
     fn create_tagfile(&self) -> Result<(), Error> {
         let tmp_tag = self.get_tmp_tag();
 
@@ -124,35 +116,6 @@ impl <'a> TagWatcher<'a> {
         try!(self.run_ctags(&mut cmd, &tmp_tag));
 
         Ok(())
-    }
-
-    fn update_tags_for_updated_files(&self) -> Result<(), Error> {
-        let tag_modified_at = try!(get_path_modification_time(&self.tag_path));
-
-        // Rely on file modification times to tell us which files have been updated since the tag
-        // file was last updated.
-        let mut changed_files = HashSet::new();
-
-        let entries = try!(fs::walk_dir(&self.project_dir));
-        for entry in entries {
-            if let Ok(file) = entry {
-                let path = file.path();
-
-                if path.is_file() && !self.ignored(&path) {
-                    if let Ok(path_modified_at) = get_path_modification_time(&path) {
-                        if path_modified_at > tag_modified_at {
-                            changed_files.insert(path);
-                        }
-                    };
-                }
-            }
-        }
-
-        if ! changed_files.is_empty() {
-            self.regenerate_tags(&changed_files)
-        } else {
-            Ok(())
-        }
     }
 
     fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), Error> {
@@ -230,12 +193,4 @@ fn paths_to_strs(paths: &HashSet<PathBuf>) -> HashSet<&str> {
     }
 
     path_strs
-}
-
-fn get_path_modification_time(path: &Path) -> Result<u64, Error> {
-    let file = try!(File::open(path));
-
-    let metadata = try!(file.metadata());
-
-    Ok(metadata.modified())
 }

@@ -1,4 +1,4 @@
-#![feature(collections, path_ext, fs_walk, fs_time)]
+#![feature(collections, path_ext)]
 
 extern crate docopt;
 extern crate glob;
