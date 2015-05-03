@@ -12,9 +12,3 @@ For installation instructions on ZSH plugins, please see https://github.com/unix
 (The ZSH functionality currently requires `start-stop-daemon` for creating PIDfiles and daemonization.  I'm planning to add support for that directly in the Rust code eventually, to remove the need for `start-stop-daemon` and improve Windows support)
 
 PRs adding support for other shells are highly welcome!
-
-Built using rust nightly `2015-05-07`.
-If you have trouble compiling I suggest you install that specific version using:
-```
-curl -s https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly --date=2015-05-07
-```
