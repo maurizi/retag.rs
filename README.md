@@ -13,8 +13,8 @@ For installation instructions on ZSH plugins, please see https://github.com/unix
 
 PRs adding support for other shells are highly welcome!
 
-Built using rust nightly `2015-04-24`.
+Built using rust nightly `2015-05-07`.
 If you have trouble compiling I suggest you install that specific version using:
 ```
-curl -s https://static.rust-lang.org/rustup.sh | sudo sh -s -- --channel=nightly --date=2015-04-24
+curl -s https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly --date=2015-05-07
 ```

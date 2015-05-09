@@ -10,6 +10,4 @@ tempdir = "0.3.2"
 docopt = "*"
 rustc-serialize = "*"
 toml = "0.1.19"
-
-[dependencies.notify]
-git = "https://github.com/maurizi/rsnotify"
+notify = "1.2.2"
