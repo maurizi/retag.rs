@@ -4,11 +4,16 @@ version = "0.0.1"
 dependencies = [
  "docopt 0.6.64 (registry+https://github.com/rust-lang/crates.io-index)",
  "glob 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "notify 1.2.1 (git+https://github.com/maurizi/rsnotify)",
+ "notify 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "bitflags"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "docopt"
@@ -32,8 +37,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "inotify"
-version = "0.1.11"
-source = "git+https://github.com/hannobraun/inotify-rs#a4706aedc6259f612e7eb3a2edc2d192145febb0"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -45,10 +50,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "notify"
-version = "1.2.1"
-source = "git+https://github.com/maurizi/rsnotify#7e562b03b47d8f6c7ee09a5c742c4b89c1a3e3f9"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "inotify 0.1.11 (git+https://github.com/hannobraun/inotify-rs)",
+ "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inotify 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

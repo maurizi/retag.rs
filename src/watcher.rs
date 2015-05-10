@@ -1,12 +1,13 @@
 use glob::Pattern;
-use notify::{RecommendedWatcher, Watcher};
+use notify::{Event, RecommendedWatcher, Watcher};
 use notify::Error as NotifyError;
 use tempdir::TempDir;
 
 use std::collections::HashSet;
 use std::fs;
 use std::fs::{File, PathExt};
-use std::io::{BufReader, BufRead, BufWriter, Write, Error, ErrorKind};
+use std::io::{BufReader, BufRead, BufWriter, Write, ErrorKind};
+use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::channel;
@@ -56,36 +57,43 @@ impl <'a> TagWatcher<'a> {
 
                 self.create_tagfile().ok().expect("Could not build tag file");
 
-                while let Ok(e) = file_change_rx.recv() {
-                    if let Some(path) = e.path {
-                        if ! self.ignored(&path) {
-                            // Sleep for a little bit, then collect all queued file notifications
-                            // This should allow us to only regenerate the tag file once for a group of
-                            // file changes, e.g. whena git operation happens
-                            //
-                            // TODO: Vary the sleep time based on how long the initial tag generation is
-                            thread::sleep_ms(500);
+                self.wait_for_files(|| file_change_rx.recv(), &mut |path| {
+                    // Sleep for a little bit, then collect all queued file notifications
+                    // This should allow us to only regenerate the tag file once for a group of
+                    // file changes, e.g. whena git operation happens
+                    //
+                    // TODO: Vary the sleep time based on how long the initial tag generation is
+                    thread::sleep_ms(500);
 
-                            let mut changed_files = HashSet::new();
-                            changed_files.insert(path);
+                    let mut changed_files = HashSet::new();
+                    changed_files.insert(path);
 
-                            while let Ok(e) = file_change_rx.try_recv() {
-                                if let Some(path) = e.path {
-                                    if ! self.ignored(&path) {
-                                        changed_files.insert(path);
-                                    }
-                                }
-                            }
+                    self.wait_for_files(|| file_change_rx.try_recv(), &mut |path| {
+                        changed_files.insert(path);
+                    });
 
-                            match self.regenerate_tags(&changed_files) {
-                                Ok(_) => println!("Rebuilt tag file for: {:?}", changed_files),
-                                Err(e) => println!("Failed to rebuild tags, error {}", e)
-                            }
-                        }
+                    match self.regenerate_tags(&changed_files) {
+                        Ok(_) => println!("Rebuilt tag file for: {:?}", changed_files),
+                        Err(e) => println!("Failed to rebuild tags, error {}", e)
                     }
-                }
+                });
             },
             Err(_) => panic!("Could not start file watcher")
+        }
+    }
+
+    fn wait_for_files<R, B, E>(&self, receiver: R, body: &mut B)
+        where R : Fn() -> Result<Event, E>, B : FnMut(PathBuf) {
+        // Repeatedly calls `receiver` until it returns an `Err`
+        // For each `Event`, call the `body` callback if it is not an ignored file
+        while let Ok(e) = receiver() {
+            if let Some(path) = e.path {
+                if let Ok(canon_path) = path.canonicalize() {
+                    if ! self.ignored(&canon_path) {
+                        body(canon_path);
+                    }
+                }
+            }
         }
     }
 
@@ -99,7 +107,7 @@ impl <'a> TagWatcher<'a> {
         f.is_dir() || f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
     }
 
-    fn create_tagfile(&self) -> Result<(), Error> {
+    fn create_tagfile(&self) -> Result<(), IoError> {
         let tmp_tag = self.get_tmp_tag();
 
         let project_dir_str = self.project_dir.to_str()
@@ -118,14 +126,14 @@ impl <'a> TagWatcher<'a> {
         Ok(())
     }
 
-    fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), Error> {
+    fn regenerate_tags(&self, changed_files: &HashSet<PathBuf>) -> Result<(), IoError> {
         let path_strs = paths_to_strs(changed_files);
 
         let tmp_tag = &try!(self.filter_tagfile_into_temp(&path_strs));
         let tmp_tag_str = match tmp_tag.to_str() {
             Some(filename) => filename,
             None => {
-                return Err(Error::new(ErrorKind::Other, "Could not open temporary file"));
+                return Err(IoError::new(ErrorKind::Other, "Could not open temporary file"));
             }
         };
 
@@ -141,7 +149,7 @@ impl <'a> TagWatcher<'a> {
         Ok(())
     }
 
-    fn filter_tagfile_into_temp(&self, path_strs: &HashSet<&str>) -> Result<PathBuf, Error> {
+    fn filter_tagfile_into_temp(&self, path_strs: &HashSet<&str>) -> Result<PathBuf, IoError> {
         // First, filter the tag file into a temp file excluding the changed files
         // This is done to prevent duplicate tags, as ctags does not remove tags
         // from your existing tag file when you use '--append'
@@ -169,13 +177,13 @@ impl <'a> TagWatcher<'a> {
         self.tmp_dir.path().join("tags.temp")
     }
 
-    fn run_ctags(&self, cmd: &mut Command, tmp_tag: &Path) -> Result<(), Error> {
+    fn run_ctags(&self, cmd: &mut Command, tmp_tag: &Path) -> Result<(), IoError> {
         println!("Running {:?}", cmd);
 
         let status = try!(cmd.status());
 
         if ! status.success() {
-            return Err(Error::new(ErrorKind::Other, "Ctags exited with a non-zero error code"));
+            return Err(IoError::new(ErrorKind::Other, "Ctags exited with a non-zero error code"));
         }
 
         try!(fs::rename(tmp_tag, &self.tag_path));
