@@ -5,7 +5,7 @@ use tempdir::TempDir;
 
 use std::collections::HashSet;
 use std::fs;
-use std::fs::{File, PathExt};
+use std::fs::File;
 use std::io::{BufReader, BufRead, BufWriter, Write, ErrorKind};
 use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
@@ -103,8 +103,13 @@ impl <'a> TagWatcher<'a> {
             pattern!(r"**/.hg/**"),
             pattern!(r"**/.svn/**"),
         ];
-        // Ignore directories, version control files, and always ignore changes to the tag file
-        f.is_dir() || f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f))
+        if let Ok(f_metadata) = fs::metadata(f){
+            // Ignore directories, version control files, and always ignore changes to the tag file
+            return f_metadata.is_dir() || f == self.tag_path.as_path() || ignored.iter().any(|p| p.matches_path(f));
+        } else {
+            // Also ignore if we couldn't read the file metadata (it likely does not exist)
+            return true;
+        }
     }
 
     fn create_tagfile(&self) -> Result<(), IoError> {

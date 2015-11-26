@@ -1,5 +1,3 @@
-#![feature(collections, path_ext)]
-
 extern crate docopt;
 extern crate glob;
 extern crate notify;
