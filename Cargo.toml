@@ -1,8 +1,12 @@
 [package]
 
 name = "retag"
-version = "0.0.1"
+description = "`A commandline tool and shell plugin that watches for file changes in a directory and incrementally rebuilds your ctags file for the files which have changed."
+license = " GPL-3.0"
+version = "0.0.2"
 authors = ["Michael Maurizi <michael.maurizi@gmail.com>"]
+repository = "https://github.com/maurizi/retag.rs"
+readme = "README.md"
 
 [dependencies]
 glob = "0.2"
